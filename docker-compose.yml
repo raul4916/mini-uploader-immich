@@ -1,0 +1,36 @@
+services:
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    volumes:
+      - clamav_db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 5m
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      clamav:
+        condition: service_healthy
+    environment:
+      CLAMD_HOST: clamav
+      CLAMD_PORT: 3310
+      VT_API_KEY: ${VT_API_KEY:-}
+      DB_PATH: /data/app.db
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-50}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - app_data:/data
+
+volumes:
+  app_data:
+  clamav_db:
